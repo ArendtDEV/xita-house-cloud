@@ -1,0 +1,47 @@
+const express = require('express');
+const multer  = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+const PORT = 3000;
+
+// 이미지 저장 디렉토리
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR);
+}
+
+// Multer 설정
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, UPLOAD_DIR);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '_' + file.originalname);
+  }
+});
+const upload = multer({ storage: storage });
+
+// 이미지 업로드 엔드포인트
+app.post('/upload', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('No image uploaded.');
+  }
+  res.json({ filename: req.file.filename, url: `/image/${req.file.filename}` });
+});
+
+// 이미지 다운로드(조회) 엔드포인트
+app.get('/image/:filename', (req, res) => {
+  const filePath = path.join(UPLOAD_DIR, req.params.filename);
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send('Image not found.');
+  }
+});
+
+// 서버 실행
+app.listen(PORT, () => {
+  console.log(`Image server running at http://localhost:${PORT}`);
+});
